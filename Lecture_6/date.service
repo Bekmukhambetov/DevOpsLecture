@@ -1,0 +1,10 @@
+[Unit]
+Description=Write date and time to a log file
+After=network.target
+
+[Service]
+ExecStart=/home/vadym/DevOps/DevOpsLecture/Lecture_6/date.sh
+Type=oneshot
+
+[Install]
+WantedBy=multi-user.target
