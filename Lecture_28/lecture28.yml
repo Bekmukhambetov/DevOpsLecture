@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Infrastructure with VPC, EC2, IAM Role, and S3 Bucket"
+
+Resources:
+
+  # VPC
+  MyVPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: "10.0.0.0/16" # CIDR-блок, який визначає діапазон IP-адрес для VPC
+      Tags:
+        - Key: "Name"
+          Value: "MyVPC"
+
+  # Public Subnet
+  PublicSubnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref MyVPC # Підключення підмережі до VPC
+      CidrBlock: "10.0.1.0/24" # CIDR-блок для підмережі
+      MapPublicIpOnLaunch: true # Автоматичне призначення публічних IP-адрес для екземплярів у цій підмережі
+      AvailabilityZone: "us-east-1a" # Вибір зони доступності
+      Tags:
+        - Key: "Name"
+          Value: "PublicSubnet"
+
+  # Internet Gateway
+  InternetGateway:
+    Type: "AWS::EC2::InternetGateway" # Інтернет-шлюз для надання доступу до Інтернету для VPC
+
+  # Attach Internet Gateway to VPC
+  AttachGateway:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      VpcId: !Ref MyVPC # Вказівка VPC
+      InternetGatewayId: !Ref InternetGateway # Прикріплення інтернет-шлюзу до VPC
+
+  # Route Table
+  PublicRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref MyVPC # Створення таблиці маршрутизації для VPC
+
+  # Route
+  DefaultRoute:
+    Type: "AWS::EC2::Route"
+    Properties:
+      RouteTableId: !Ref PublicRouteTable # Призначення маршруту таблиці маршрутизації
+      DestinationCidrBlock: "0.0.0.0/0" # Маршрут для всього трафіку
+      GatewayId: !Ref InternetGateway # Використання інтернет-шлюзу для маршруту
+
+  # Associate Route Table with Subnet
+  SubnetRouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref PublicSubnet # Призначення таблиці маршрутизації підмережі
+      RouteTableId: !Ref PublicRouteTable
+
+  # IAM Role
+  EC2Role:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17" # Версія документа політики
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "ec2.amazonaws.com" # Дозволити EC2 сервісу виконувати роль
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess" # Прикріплення політики "Тільки читання" для S3
+
+  # IAM Instance Profile
+  InstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Roles:
+        - !Ref EC2Role # Прикріплення IAM ролі до профілю екземпляра
+
+  # EC2 Instance
+  EC2Instance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: "t2.micro" # Тип екземпляра
+      ImageId: "ami-0453ec754f44f9a4a" # AMI ID для Amazon Linux 2 в регіоні us-east-1
+      SubnetId: !Ref PublicSubnet # Запуск екземпляра у публічній підмережі
+      IamInstanceProfile: !Ref InstanceProfile # Призначення профілю екземпляра до інстансу
+      Tags:
+        - Key: "Name"
+          Value: "MyEC2Instance"
+
+  # S3 Bucket
+  MyS3Bucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Sub "my-bucket-${AWS::AccountId}-${AWS::Region}" # Унікальне ім'я bucket
+      VersioningConfiguration:
+        Status: "Enabled" # Увімкнення версіонування для bucket
+
+  # Bucket Policy
+  BucketPolicy:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket: !Ref MyS3Bucket # Застосування політики до S3 bucket
+      PolicyDocument:
+        Version: "2012-10-17" # Версія документа політики
+        Statement:
+          - Sid: "AllowGetObject" # Ідентифікатор заяви для ідентифікації
+            Effect: "Allow"
+            Principal:
+              AWS: "arn:aws:iam::639560724485:user/v.bekmukhambetov"
+            Action: "s3:GetObject" # Дозволити дію GetObject
+            Resource: !Sub "${MyS3Bucket.Arn}/*" # Застосування політики до всіх об'єктів у bucket
+
+Outputs:
+  EC2PublicIP:
+    Description: "Public IP of the EC2 instance"
+    Value: !GetAtt EC2Instance.PublicIp # Виведення публічної IP-адреси екземпляра
+
+  S3BucketName:
+    Description: "Name of the S3 Bucket"
+    Value: !Ref MyS3Bucket # Виведення імені S3 bucket
