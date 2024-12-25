@@ -18,3 +18,12 @@ resource "aws_instance" "private" {
   }
 }
 
+resource "aws_instance" "imported_instance" {
+  ami           = "ami-01816d07b1128cd2d"
+  instance_type = "t2.micro"
+  subnet_id     = var.public_subnet_id
+
+  tags = {
+    Name = "new_instans"
+  }
+}

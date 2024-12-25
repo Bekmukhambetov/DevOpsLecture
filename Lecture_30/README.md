@@ -2,7 +2,7 @@
 
 # Terraform
 
-## Опис завдання
+## Опис завдання 1/2
 
 * Створити VPC з двома серверами у публічній та приватній підмережі за допомогою Terraform, застосовуючи модулі
   * Створіть модуль для VPC
@@ -86,12 +86,58 @@ terraform-project/
    public_instance_id = "i-07d02d606621e0a93"
    vpc_id = "vpc-0fab8dd692df94a13"
    ```
-
-6. **Видалення інфраструктури:**
-   ```bash
-   terraform destroy
-   ```
-   Видаляє всі створені ресурси.
+![alt text](image-1.png)
 
 
+## Опис завдання 2/2
 
+  * Імпортувати наявні ресурси в Terraform-конфігурації
+  * Створіть кілька ресурсів вручну за допомогою AWS Management Console
+  ![alt text](image-2.png)
+  * Імпортуйте ці ресурси у Terraform конфігураційні файли за допомогою команди terraform import
+  * Переконайтеся, що Terraform створює ідентичну інфраструктуру
+
+До модуля [EC2](terraform-project/modules/ec2/main.tf) додаємо ресурс, який потрібно імпортувати до нашого проєкту (в даному випадку ec2 інстанс). 
+ ```
+    resource "aws_instance" "imported_instance" {
+        ami           = "ami-01816d07b1128cd2d"
+        instance_type = "t2.micro"
+        subnet_id     = var.public_subnet_id
+
+        tags = {
+            Name = "new-instans"
+        }
+    }
+ ```
+Для імпорту ресурсу у Terraform використовуємо команду `terraform import`: 
+
+```bash
+terraform import module.ec2.aws_instance.imported_instance i-057e0f0d007cf4e8b
+``` 
+
+* `aws_instance` — тип ресурсу, який імпортуємо.
+* `imported_instance` — ім'я ресурсу в Terraform конфігурації.
+* `i-057e0f0d007cf4e8b` — ID ресурсу (EC2 інстансу).
+
+```bash
+module.ec2.aws_instance.imported_instance: Importing from ID "i-057e0f0d007cf4e8b"...
+module.ec2.aws_instance.imported_instance: Import prepared!
+  Prepared aws_instance for import
+module.ec2.aws_instance.imported_instance: Refreshing state... [id=i-057e0f0d007cf4e8b]
+
+Import successful!
+
+The resources that were imported are shown above. These resources are now in
+your Terraform state and will henceforth be managed by Terraform.
+```
+Після імпорту запускаємо команду `terraform plan`, щоб перевірити опис інфраструктури на відсутність змін:
+
+![alt text](image.png)
+
+**Видалення інфраструктури:**
+```bash
+terraform destroy
+```
+Видаляє всі створені ресурси. 
+При заапуску даної команди були видалені всі описані ресурси, включаючи імпортований ec2 інстанс.
+![alt text](image-3.png)
