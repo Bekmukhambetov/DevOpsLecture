@@ -1,0 +1,22 @@
+# Лог-файли
+*.log
+
+# Артефакти збірки
+/build/
+/dist/
+
+# Конфігураційні файли
+.env
+config/*.local
+
+# Залежності
+node_modules/
+vendor/
+
+# Налаштування IDE
+.idea/
+.vscode/
+
+# Системні файли
+.DS_Store
+Thumbs.db
